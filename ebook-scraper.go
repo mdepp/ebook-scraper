@@ -51,7 +51,8 @@ func assembleEpub(book ScrapedBook) (*epub.Epub, error) {
 	doc.SetCover(coverImage, coverCSS)
 	doc.SetDescription(book.meta.Description)
 
-	bar := progressbar.Default(int64(len(book.toc)), "Assemble epub")
+	bar := progressbar.Default(int64(len(book.toc)), "Assembling epub")
+	defer bar.Finish()
 	for _, tocEntry := range book.toc {
 		bar.Add(1)
 		chapter := book.chapters[tocEntry.URL]
