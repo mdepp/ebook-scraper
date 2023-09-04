@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"runtime/pprof"
 	"strings"
 
 	"github.com/bmaupin/go-epub"
@@ -66,13 +67,24 @@ func assembleEpub(book ScrapedBook) (*epub.Epub, error) {
 func main() {
 	flag.Usage = func() {
 		fmt.Printf("Usage: %s <URL>\n", os.Args[0])
+		flag.PrintDefaults()
 	}
+	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `filename`")
 	flag.Parse()
 	if flag.NArg() < 1 {
 		flag.Usage()
 		os.Exit(1)
 	}
 	baseURL := flag.Arg(0)
+
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			fmt.Println("Failed to create profile file:", err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 
 	handlers := map[string]Scraper{
 		"www.royalroad.com": scrapeRoyalRoad,
