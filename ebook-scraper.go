@@ -12,6 +12,7 @@ import (
 	"github.com/gocolly/colly"
 	"github.com/mdepp/go-epub"
 	"github.com/schollz/progressbar/v3"
+	"go.uber.org/zap"
 )
 
 type TOCEntry struct {
@@ -38,6 +39,8 @@ type ScrapedBook struct {
 
 type Scraper = func(*colly.Collector, string) (ScrapedBook, error)
 
+var logger *zap.SugaredLogger
+
 func assembleEpub(book ScrapedBook) (*epub.Epub, error) {
 	doc := epub.NewEpub(book.meta.Title)
 	doc.SetAuthor(book.meta.Author)
@@ -52,7 +55,7 @@ func assembleEpub(book ScrapedBook) (*epub.Epub, error) {
 	doc.SetCover(coverImage, coverCSS)
 	doc.SetDescription(book.meta.Description)
 
-	bar := progressbar.Default(int64(len(book.toc)), "Assembling epub")
+	bar := progressbar.Default(int64(len(book.toc)))
 	defer bar.Finish()
 	for _, tocEntry := range book.toc {
 		bar.Add(1)
@@ -67,8 +70,12 @@ func assembleEpub(book ScrapedBook) (*epub.Epub, error) {
 }
 
 func main() {
+	rawLogger, _ := zap.NewDevelopment()
+	defer rawLogger.Sync()
+	logger = rawLogger.Sugar()
+
 	flag.Usage = func() {
-		fmt.Printf("Usage: %s <URL>\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s <URL>\n", os.Args[0])
 		flag.PrintDefaults()
 	}
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `filename`")
@@ -80,9 +87,10 @@ func main() {
 	baseURL := flag.Arg(0)
 
 	if *cpuprofile != "" {
+		logger.Infow("Begin CPU profile", "filename", cpuprofile)
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
-			fmt.Println("Failed to create profile file:", err)
+			logger.Fatal(err)
 		}
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
@@ -94,13 +102,11 @@ func main() {
 	}
 	parsedURL, err := url.Parse(baseURL)
 	if err != nil {
-		fmt.Println("Invalid url:", err)
-		os.Exit(1)
+		logger.Fatal(err)
 	}
 	handler, ok := handlers[parsedURL.Host]
 	if !ok {
-		fmt.Println("No handler available for url")
-		os.Exit(1)
+		logger.Fatalw("No handler for host", "host", parsedURL.Host)
 	}
 
 	baseCollector := colly.NewCollector(
@@ -111,18 +117,20 @@ func main() {
 		},
 	)
 
+	logger.Infow("Scrape html", "baseURL", baseURL)
 	scrapedBook, err := handler(baseCollector, baseURL)
 	if err != nil {
-		fmt.Println("Scraping failed: {}", err)
+		logger.Fatal(err)
 	}
+	logger.Infow("Assemble epub", "title", scrapedBook.meta.Title, "chapters", len(scrapedBook.toc))
 	doc, err := assembleEpub(scrapedBook)
 	if err != nil {
-		fmt.Println("Assembling failed: {}", err)
+		logger.Fatal(err)
 	}
-
 	filename := strings.ToLower(strings.ReplaceAll(doc.Title(), " ", "-")) + ".epub"
+	logger.Infow("Write to file", "filename", filename)
 	doc.Write(filename)
-	fmt.Println("Wrote to", filename)
+	logger.Infow("All done")
 }
 
 func scrapeRoyalRoad(baseCollector *colly.Collector, baseURL string) (ScrapedBook, error) {
@@ -207,7 +215,7 @@ func scrapePhrack(baseCollector *colly.Collector, baseURL string) (ScrapedBook, 
 
 func logVisits(collector *colly.Collector) {
 	collector.OnRequest(func(r *colly.Request) {
-		fmt.Println("Visiting", r.URL)
+		logger.Debugw("Visit", "method", r.Method, "url", r.URL)
 	})
 }
 

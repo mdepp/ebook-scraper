@@ -25,6 +25,8 @@ require (
 	github.com/schollz/progressbar/v3 v3.13.1 // indirect
 	github.com/temoto/robotstxt v1.1.2 // indirect
 	github.com/vincent-petithory/dataurl v1.0.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+	go.uber.org/zap v1.25.0 // indirect
 	golang.org/x/net v0.14.0 // indirect
 	golang.org/x/sys v0.12.0 // indirect
 	golang.org/x/term v0.12.0 // indirect
