@@ -177,13 +177,13 @@ func scrapePhrack(baseCollector *colly.Collector, baseURL string) (ScrapedBook, 
 	var chapters = make(map[string]Chapter)
 
 	logVisits(baseCollector)
-	baseCollector.OnHTML(".details a", func(e *colly.HTMLElement) {
-		childURL := e.Request.AbsoluteURL(e.Attr("href"))
-		baseCollector.Visit(childURL)
-	})
 	baseCollector.OnHTML(".tissue a", func(e *colly.HTMLElement) {
 		childURL := e.Request.AbsoluteURL(e.Attr("href"))
 		toc = append(toc, TOCEntry{URL: childURL})
+		baseCollector.Visit(childURL)
+	})
+	baseCollector.OnHTML(".details a", func(e *colly.HTMLElement) {
+		childURL := e.Request.AbsoluteURL(e.Attr("href"))
 		baseCollector.Visit(childURL)
 	})
 	baseCollector.OnHTML("body", func(e *colly.HTMLElement) {
