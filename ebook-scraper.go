@@ -8,8 +8,8 @@ import (
 	"runtime/pprof"
 	"strings"
 
-	"github.com/bmaupin/go-epub"
 	"github.com/gocolly/colly"
+	"github.com/mdepp/go-epub"
 	"github.com/schollz/progressbar/v3"
 )
 
