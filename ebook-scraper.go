@@ -203,7 +203,7 @@ func scrapePhrack(baseCollector *colly.Collector, baseURL string) (ScrapedBook, 
 	baseCollector.OnHTML("body", func(e *colly.HTMLElement) {
 		chapterURL := e.Request.URL.String()
 		chapterTitle := e.ChildText(".p-title")
-		chapterContent := "<pre>" + e.ChildText("pre") + "</pre>"
+		chapterContent := "<pre>" + childHTML(e, "pre") + "</pre>"
 		chapters[chapterURL] = Chapter{Title: chapterTitle, Content: chapterContent}
 	})
 	err := baseCollector.Visit(baseURL)
