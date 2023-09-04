@@ -8,6 +8,7 @@ import (
 	"runtime/pprof"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/gocolly/colly"
 	"github.com/mdepp/go-epub"
 	"github.com/schollz/progressbar/v3"
@@ -175,12 +176,16 @@ func scrapePhrack(baseCollector *colly.Collector, baseURL string) (ScrapedBook, 
 		Title: "Phrack Magazine", CoverURL: "http://phrack.org/images/phrack-logo.jpg",
 	}
 	var toc []TOCEntry
+	tocSet := mapset.NewSet[string]()
 	var chapters = make(map[string]Chapter)
 
 	logVisits(baseCollector)
 	baseCollector.OnHTML(".tissue a", func(e *colly.HTMLElement) {
 		childURL := e.Request.AbsoluteURL(e.Attr("href"))
-		toc = append(toc, TOCEntry{URL: childURL})
+		if !tocSet.Contains(childURL) {
+			toc = append(toc, TOCEntry{URL: childURL})
+			tocSet.Add(childURL)
+		}
 		baseCollector.Visit(childURL)
 	})
 	baseCollector.OnHTML(".details a", func(e *colly.HTMLElement) {
