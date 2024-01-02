@@ -44,16 +44,19 @@ var logger *zap.SugaredLogger
 func assembleEpub(book ScrapedBook) (*epub.Epub, error) {
 	doc := epub.NewEpub(book.meta.Title)
 	doc.SetAuthor(book.meta.Author)
-	coverImage, err := doc.AddImage(book.meta.CoverURL, "cover")
-	if err != nil {
-		return nil, err
+
+	if book.meta.CoverURL != "" {
+		coverImage, err := doc.AddImage(book.meta.CoverURL, "cover")
+		if err != nil {
+			return nil, err
+		}
+		coverCSS, err := doc.AddCSS("assets/cover.css", "")
+		if err != nil {
+			return nil, err
+		}
+		doc.SetCover(coverImage, coverCSS)
+		doc.SetDescription(book.meta.Description)
 	}
-	coverCSS, err := doc.AddCSS("assets/cover.css", "")
-	if err != nil {
-		return nil, err
-	}
-	doc.SetCover(coverImage, coverCSS)
-	doc.SetDescription(book.meta.Description)
 
 	bar := progressbar.Default(int64(len(book.toc)))
 	defer bar.Finish()
@@ -145,7 +148,10 @@ func scrapeRoyalRoad(baseCollector *colly.Collector, baseURL string) (ScrapedBoo
 	logVisits(chapterCollector)
 
 	mainCollector.OnHTML("html", func(e *colly.HTMLElement) {
-		coverURL := e.ChildAttr(".fic-header img[data-type=\"cover\"]", "src")
+		coverURL := e.Request.AbsoluteURL(e.ChildAttr(".fic-header img[data-type=\"cover\"]", "src"))
+		if strings.Contains(coverURL, "/nocover") {
+			coverURL = ""
+		}
 		meta = Metadata{
 			Title:       e.ChildText(".fic-title h1"),
 			Author:      e.ChildText(".fic-title h4 a"),
