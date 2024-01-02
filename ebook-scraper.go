@@ -229,7 +229,13 @@ func scrapePhrack(baseCollector *colly.Collector, baseURL string) (ScrapedBook, 
 
 func logVisits(collector *colly.Collector) {
 	collector.OnRequest(func(r *colly.Request) {
-		logger.Debugw("Visit", "method", r.Method, "url", r.URL)
+		logger.Debugw("Visit", "method", r.Method, "url", r.URL, "headers", r.Headers)
+	})
+	collector.OnError(func(r *colly.Response, err error) {
+		logger.Warnw("Error", "status", r.StatusCode, "request", r.Request, "headers", r.Headers, "error", err)
+	})
+	collector.OnResponse(func(r *colly.Response) {
+		logger.Debugw("Response", "url", r.Request.URL, "status", r.StatusCode)
 	})
 }
 
