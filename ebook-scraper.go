@@ -105,8 +105,9 @@ func main() {
 	}
 
 	handlers := map[string]Scraper{
-		"www.royalroad.com": scrapeRoyalRoad,
-		"phrack.org":        scrapePhrack,
+		"www.royalroad.com":   scrapeRoyalRoad,
+		"phrack.org":          scrapePhrack,
+		"www.scribblehub.com": scrapeScribblehub,
 	}
 	parsedURL, err := url.Parse(baseURL)
 	if err != nil {
@@ -221,6 +222,47 @@ func scrapePhrack(baseCollector *colly.Collector, baseURL string) (ScrapedBook, 
 		chapterContent := "<pre>" + childHTML(e, "pre") + "</pre>"
 		chapters[chapterURL] = Chapter{Title: chapterTitle, Content: chapterContent}
 	})
+	err := baseCollector.Visit(baseURL)
+	if err != nil {
+		return ScrapedBook{}, err
+	}
+	return ScrapedBook{meta, toc, chapters}, nil
+}
+
+func scrapeScribblehub(baseCollector *colly.Collector, baseURL string) (ScrapedBook, error) {
+	var meta Metadata
+	var toc []TOCEntry
+	var chapters = make(map[string]Chapter)
+
+	setupCommonHandlers(baseCollector)
+	baseCollector.OnHTML("body", func(e *colly.HTMLElement) {
+		firstChapterURL := e.ChildAttr(".read_buttons a:first-child", "href")
+		if firstChapterURL != "" {
+			meta = Metadata{
+				Title:       e.ChildText(".fic_title"),
+				Author:      e.ChildText(".auth_name_fic"),
+				CoverURL:    e.ChildAttr(".fic_image img", "src"),
+				Description: childHTML(e, ".wi_fic_desc"),
+			}
+			baseCollector.Visit(firstChapterURL)
+		}
+		chapterContent := childHTML(e, ".chp_raw")
+		if chapterContent != "" {
+			chapterURL := e.Request.URL.String()
+			toc = append(toc, TOCEntry{
+				URL: chapterURL,
+			})
+			chapters[chapterURL] = Chapter{
+				Title:   e.ChildText(".chapter-title"),
+				Content: chapterContent,
+			}
+		}
+		nextChapterURL := e.ChildAttr(".btn-next", "href")
+		if nextChapterURL != "" {
+			baseCollector.Visit(nextChapterURL)
+		}
+	})
+
 	err := baseCollector.Visit(baseURL)
 	if err != nil {
 		return ScrapedBook{}, err
