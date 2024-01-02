@@ -10,6 +10,7 @@ import (
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/gocolly/colly"
+	"github.com/gocolly/colly/extensions"
 	"github.com/mdepp/go-epub"
 	"github.com/schollz/progressbar/v3"
 	"go.uber.org/zap"
@@ -152,8 +153,8 @@ func scrapeRoyalRoad(baseCollector *colly.Collector, baseURL string) (ScrapedBoo
 	mainCollector := baseCollector.Clone()
 	chapterCollector := mainCollector.Clone()
 
-	logVisits(mainCollector)
-	logVisits(chapterCollector)
+	setupCommonHandlers(mainCollector)
+	setupCommonHandlers(chapterCollector)
 
 	mainCollector.OnHTML("html", func(e *colly.HTMLElement) {
 		coverURL := e.Request.AbsoluteURL(e.ChildAttr(".fic-header img[data-type=\"cover\"]", "src"))
@@ -201,7 +202,7 @@ func scrapePhrack(baseCollector *colly.Collector, baseURL string) (ScrapedBook, 
 	tocSet := mapset.NewSet[string]()
 	var chapters = make(map[string]Chapter)
 
-	logVisits(baseCollector)
+	setupCommonHandlers(baseCollector)
 	baseCollector.OnHTML(".tissue a", func(e *colly.HTMLElement) {
 		childURL := e.Request.AbsoluteURL(e.Attr("href"))
 		if !tocSet.Contains(childURL) {
@@ -227,7 +228,8 @@ func scrapePhrack(baseCollector *colly.Collector, baseURL string) (ScrapedBook, 
 	return ScrapedBook{meta, toc, chapters}, nil
 }
 
-func logVisits(collector *colly.Collector) {
+func setupCommonHandlers(collector *colly.Collector) {
+	extensions.RandomUserAgent(collector)
 	collector.OnRequest(func(r *colly.Request) {
 		logger.Debugw("Visit", "method", r.Method, "url", r.URL, "headers", r.Headers)
 	})
