@@ -82,6 +82,7 @@ func main() {
 		flag.PrintDefaults()
 	}
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `filename`")
+	transport := flag.String("transport", "default", "request transport `backend` [default|curl]")
 	flag.Parse()
 	if flag.NArg() < 1 {
 		flag.Usage()
@@ -97,6 +98,9 @@ func main() {
 		}
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
+	}
+	if *transport != "default" && *transport != "curl" {
+		logger.Fatal("Transport must be one of default or curl")
 	}
 
 	handlers := map[string]Scraper{
@@ -117,6 +121,10 @@ func main() {
 		colly.AllowedDomains(parsedURL.Host),
 		func(col *colly.Collector) {
 			col.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: 5})
+			logger.Debugw("Set transport backend", "transport", transport)
+			if *transport == "curl" {
+				col.WithTransport(CurlTransport{})
+			}
 		},
 	)
 
